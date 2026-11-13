@@ -1,0 +1,109 @@
+image:
+  repository: ghcr.io/cdt-foundation/crewlane
+  tag: ""            # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+# Tenants are served at <slug>.<rootDomain>.
+rootDomain: crewlane.example.com
+publicSignup: true
+logLevel: info
+
+# Secrets. Prefer existingSecret (e.g. created by External Secrets / Vault).
+# It must contain: DATABASE_URL, WORKER_DATABASE_URL, DATABASE_ADMIN_URL,
+# APP_DB_PASSWORD, WORKER_DB_PASSWORD, BETTER_AUTH_SECRET, CREWLANE_ENCRYPTION_KEY
+# and optionally METRICS_TOKEN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY.
+existingSecret: ""
+secrets:
+  databaseUrl: ""
+  workerDatabaseUrl: ""
+  databaseAdminUrl: ""
+  appDbPassword: ""
+  workerDbPassword: ""
+  betterAuthSecret: ""
+  encryptionKey: ""      # openssl rand -base64 32
+  metricsToken: ""
+  s3AccessKeyId: ""
+  s3SecretAccessKey: ""
+
+# Uploaded files (invoices, documents). The root filesystem is read-only, so
+# production uses S3-compatible storage (AWS S3, MinIO, Cloudflare R2).
+storage:
+  driver: s3
+  bucket: crewlane
+  region: us-east-1
+  endpoint: ""           # e.g. http://minio.storage:9000 for MinIO
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+  seccompProfile: { type: RuntimeDefault }
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities: { drop: [ALL] }
+
+web:
+  replicas: 2
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 768Mi }
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+  pdb:
+    enabled: true
+    minAvailable: 1
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+worker:
+  enabled: true
+  replicas: 1
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 384Mi }
+  nodeSelector: {}
+  tolerations: []
+
+migrations:
+  enabled: true
+  backoffLimit: 2
+  activeDeadlineSeconds: 600
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+    # cert-manager.io/cluster-issuer: letsencrypt-dns01   # wildcard certs need DNS-01
+  tls:
+    enabled: true
+    secretName: crewlane-wildcard-tls
+
+metrics:
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    labels: {}
+
+networkPolicy:
+  enabled: false
+  # Namespace labels allowed to reach the web pods (ingress controller, Prometheus).
+  ingressNamespaceSelector:
+    kubernetes.io/metadata.name: ingress-nginx
+  monitoringNamespaceSelector:
+    kubernetes.io/metadata.name: monitoring

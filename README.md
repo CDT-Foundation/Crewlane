@@ -284,27 +284,91 @@ flowchart LR
 
 ## 10. Getting Started & Repository Workflow
 
-### Local Development
+**Phase 1** (Foundation, Core HR and Governance) and **Phase 2** (Asset and IT Service Management) are implemented. Phases 3 and 4 appear in the app as "coming next" pages. See [`docs/FEATURES.md`](docs/FEATURES.md) for the full feature list and status.
 
-Install dependencies and run the Next.js development server:
+- **Phase 1:** multi-tenant core with Postgres row-level security, onboarding wizard, subdomains, custom domains and branding, organisation builder, scoped roles, maker-checker approvals, no-code workflow builder, append-only hash-chained audit log, employee directory, letters and the pre-boarding portal.
+- **Phase 2:** asset register with QR labels, signed handovers and depreciation (straight-line and WDV) with a CSV report; equipment requests with line-manager approval; procurement (vendors, purchase orders with conditional approval, goods receipts that create assets); returnable and non-returnable gate passes with a security scan page; IT service desk (Kanban, SLA timers and breach alerts, internal notes, satisfaction ratings, inbound email/Teams/Slack/WhatsApp webhook); leave-aware routing of approvals and tickets; Google Workspace and Microsoft 365 provisioning; software licences with seat tracking, renewal reminders and an invoice vault; telecom bill splitter with payroll deductions; zero-touch onboarding and the offboarding gate that blocks final settlement until everything is returned; device discovery agent; in-app and email notifications.
+
+### Integrations: simulator or live
+
+Every outside system sits behind an adapter, switchable per tenant in **Integrations**:
+
+| Integration | Live implementation | Simulator |
+| --- | --- | --- |
+| Google Workspace | Admin SDK Directory API, service account with domain-wide delegation | Creates fake directory ids |
+| Microsoft 365 | Microsoft Graph, client credentials | Same |
+| Email | SMTP (nodemailer) | Logs the message |
+| Inbound tickets | `POST /api/inbound/<email\|teams\|slack\|whatsapp>` signed with HMAC-SHA256 | Same endpoint, any test secret |
+| Device agent | `scripts/agent/crewlane-agent.sh` / `.ps1` → `POST /api/agent/report` | — |
+
+Credentials are encrypted with AES-256-GCM (`CREWLANE_ENCRYPTION_KEY`). The live Google and Microsoft adapters follow the documented REST APIs but have not been run against real tenants yet; start in simulator mode, then switch one test tenant to live.
+
+### How tenancy is enforced
+
+- Every tenant table has a `tenant_id` column and a **forced** Postgres RLS policy (`drizzle/0001_security.sql`). The app connects as `crewlane_app`, which owns no table, and sets `app.tenant_id` at the start of every transaction (`withTenant` in `src/db/tenant.ts`). With no tenant set, queries return nothing.
+- Triggers reject references to another tenant's rows (foreign keys alone would allow it), and make whoever raised a maker-checker request unable to approve it.
+- `audit_log` is append-only (no UPDATE/DELETE/TRUNCATE, even for the owner) and SHA-256 hash-chained per tenant. `/app/audit` verifies the chain on every load.
+- The tenant comes from the host: `<slug>.<ROOT_DOMAIN>` or a verified custom domain. Membership is always checked against that tenant.
+
+### Local development
+
+Prerequisites: Node.js 22+, Docker.
 
 ```bash
+cp .env.example .env.local        # then set BETTER_AUTH_SECRET
+docker compose up -d postgres     # Postgres 16 + pgvector
 npm install
-npm run dev
+set -a && . ./.env.local && set +a && npm run db:migrate
+npm run dev                       # web on http://localhost:3000
+npm run worker                    # event worker + scheduler (separate terminal)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open http://localhost:3000/signup in **Chrome** and create an organisation. You are redirected to `http://<slug>.localhost:3000`. Chrome resolves `*.localhost` automatically; for Safari or Firefox add `127.0.0.1 <slug>.localhost` to `/etc/hosts`.
 
-> **Windows PowerShell note:** If PowerShell execution policy restricts `.ps1` scripts, invoke `npm.cmd` (e.g. `npm.cmd run dev`, `npm.cmd run build`, `npm.cmd run lint`).
+Full stack in containers: `docker compose --profile app up --build`.
+
+> **Windows PowerShell note:** If PowerShell execution policy restricts `.ps1` scripts, invoke `npm.cmd` (e.g. `npm.cmd run dev`).
 
 ### Available Scripts
 
-- `npm run dev` — Start the Next.js development server
-- `npm run build` — Create an optimised production build
-- `npm run start` — Start the production server
-- `npm run lint` — Run ESLint (`eslint.config.mjs`)
+- `npm run dev` / `build` / `start` — Next.js
+- `npm run worker` — run the outbox event worker
+- `npm run build:jobs` — bundle the worker and migration runner into `dist/`
+- `npm run lint` / `typecheck`
+- `npm test` — unit tests; set `TEST_DATABASE_ADMIN_URL=postgres://postgres:postgres@localhost:5432/postgres` to also run the integration tests (tenant isolation, cross-tenant references, maker-checker, audit immutability, worker)
+- `npm run db:generate` — create a migration after changing `src/db/schema`
+- `npm run db:check` — verify migrations are consistent
+- `npm run db:migrate` — apply migrations (needs `DATABASE_ADMIN_URL`)
+
+### Project layout
+
+```
+src/app/            pages and server actions (/, /signup, /login, /app/*, /preboarding/[token], /api/*)
+src/db/             Drizzle schema, pools, withTenant(), migration runner
+src/lib/            auth, tenancy, permissions, workflows engine, audit, letters, provisioning
+src/worker/         outbox event worker and scheduler (SLA breaches, renewals, overdue gate passes, exit-day revocation); health and metrics on :8081
+src/integrations/   Google Workspace, Microsoft 365 and SMTP adapters with simulators
+scripts/agent/      device discovery agent for macOS/Linux and Windows
+drizzle/            SQL migrations (0001 and 0003 = RLS, triggers, roles)
+deploy/helm/        Helm chart: web, worker, migration hook Job, ingress, HPA, PDB, ServiceMonitor, NetworkPolicy
+deploy/argocd/      Argo CD Application (staging)
+tests/              unit and integration tests (Vitest)
+```
+
+### Deployment
+
+One image serves three roles: `node server.js` (web), `node dist/worker.mjs` (worker) and `node dist/migrate.mjs` (migrations). The Helm chart runs migrations as a pre-install/pre-upgrade Job, so a failed migration aborts the release before new pods start.
+
+```bash
+helm upgrade --install crewlane deploy/helm/crewlane -n crewlane --create-namespace \
+  --set rootDomain=crewlane.example.com --set existingSecret=crewlane-secrets \
+  --set image.tag=sha-<commit>
+```
+
+The secret needs `DATABASE_URL`, `WORKER_DATABASE_URL`, `DATABASE_ADMIN_URL`, `APP_DB_PASSWORD`, `WORKER_DB_PASSWORD`, `BETTER_AUTH_SECRET` and `CREWLANE_ENCRYPTION_KEY` (optional `METRICS_TOKEN`, and `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` for S3-compatible file storage, configured under `storage:` in the values). After every migration, the migration job also brings existing tenants up to date (new system roles, permissions, asset categories and SLA policies) without overwriting their own changes. Point `rootDomain` and `*.rootDomain` at the ingress and issue a wildcard certificate with a DNS-01 issuer. Health: `/api/health` (liveness) and `/api/ready` (database). Metrics: `/api/metrics` (web) and `:8081/metrics` (worker).
 
 ### Branching & CI Rules
 
-- **`main`** and **`dev`** are protected branches requiring pull requests with at least 1 approval and passing GitHub Actions CI checks (`build-and-lint`: `npm ci`, `npm run lint`, `npm run build`).
+- **`main`** and **`dev`** are protected branches requiring pull requests with at least 1 approval and passing GitHub Actions CI checks (`build-and-lint`: lint, typecheck, migration check, unit and integration tests against Postgres, build).
+- Pushes to `main`/`dev` also build the container image, push it to GHCR (`ghcr.io/cdt-foundation/crewlane:sha-<commit>`) and fail on critical vulnerabilities (Trivy).
 - Create feature/fix branches from `dev` and open a pull request using the repository's PR and Issue templates in `.github/`.

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: crewlane
+description: Crewlane multi-tenant HR, payroll and IT platform (web, event worker, migrations)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

@@ -1,0 +1,87 @@
+# Local development.
+#   Database only:  docker compose up -d postgres   (then npm run db:migrate && npm run dev)
+#   Full stack:     docker compose --profile app up --build
+#   Open:           http://localhost:3000  (tenants at http://<slug>.localhost:3000 in Chrome)
+name: crewlane
+
+x-app-env: &app-env
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-dev-only-secret-change-me-0123456789}
+  # Dev-only key; generate a real one with: openssl rand -base64 32
+  CREWLANE_ENCRYPTION_KEY: ${CREWLANE_ENCRYPTION_KEY:-ZGV2LW9ubHktZW5jcnlwdGlvbi1rZXktMzItYnl0ZXM=}
+  ROOT_DOMAIN: localhost:3000
+  APP_PROTOCOL: http
+  PUBLIC_SIGNUP: "true"
+
+services:
+  postgres:
+    # pgvector is included now for the Phase 4 knowledge search.
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: crewlane
+      POSTGRES_PASSWORD: crewlane
+      POSTGRES_DB: crewlane
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crewlane -d crewlane"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    profiles: [app]
+    build: .
+    image: crewlane:dev
+    command: ["node", "dist/migrate.mjs"]
+    environment:
+      DATABASE_ADMIN_URL: postgres://crewlane:crewlane@postgres:5432/crewlane
+      APP_DB_PASSWORD: app-dev-password
+      WORKER_DB_PASSWORD: worker-dev-password
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  web:
+    profiles: [app]
+    image: crewlane:dev
+    environment:
+      <<: *app-env
+      DATABASE_URL: postgres://crewlane_app:app-dev-password@postgres:5432/crewlane
+      STORAGE_DRIVER: s3
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: crewlane
+      AWS_ACCESS_KEY_ID: crewlane
+      AWS_SECRET_ACCESS_KEY: crewlane-minio
+    ports: ["3000:3000"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  worker:
+    profiles: [app]
+    image: crewlane:dev
+    command: ["node", "dist/worker.mjs"]
+    environment:
+      <<: *app-env
+      WORKER_DATABASE_URL: postgres://crewlane_worker:worker-dev-password@postgres:5432/crewlane
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  # S3-compatible storage for invoices and documents (console on :9001).
+  minio:
+    profiles: [app]
+    image: minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: crewlane
+      MINIO_ROOT_PASSWORD: crewlane-minio
+    ports: ["9000:9000", "9001:9001"]
+    volumes: [miniodata:/data]
+
+  minio-setup:
+    profiles: [app]
+    image: minio/mc:latest
+    depends_on: [minio]
+    entrypoint: ["/bin/sh", "-c", "sleep 3 && mc alias set local http://minio:9000 crewlane crewlane-minio && mc mb -p local/crewlane"]
+
+volumes:
+  pgdata:
+  miniodata:

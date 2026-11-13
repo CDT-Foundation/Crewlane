@@ -1,0 +1,14 @@
+# Example staging overrides. Secrets come from an ExternalSecret named crewlane-staging.
+rootDomain: staging.crewlane.example.com
+existingSecret: crewlane-staging
+web:
+  autoscaling: { enabled: false }
+  replicas: 1
+  pdb: { enabled: false }
+ingress:
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-dns01
+metrics:
+  serviceMonitor: { enabled: true }
+networkPolicy:
+  enabled: true

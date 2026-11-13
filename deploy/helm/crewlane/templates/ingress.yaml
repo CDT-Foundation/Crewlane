@@ -1,0 +1,34 @@
+{{- if .Values.ingress.enabled }}
+{{- $svc := printf "%s-web" (include "crewlane.fullname" .) }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "crewlane.fullname" . }}
+  labels: {{- include "crewlane.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - secretName: {{ .Values.ingress.tls.secretName }}
+      hosts:
+        - {{ .Values.rootDomain | quote }}
+        - {{ printf "*.%s" .Values.rootDomain | quote }}
+  {{- end }}
+  rules:
+    {{- range $host := list .Values.rootDomain (printf "*.%s" .Values.rootDomain) }}
+    - host: {{ $host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $svc }}
+                port: { name: http }
+    {{- end }}
+{{- end }}

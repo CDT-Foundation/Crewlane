@@ -1,0 +1,58 @@
+{{- if .Values.worker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "crewlane.fullname" . }}-worker
+  labels: {{- include "crewlane.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  replicas: {{ .Values.worker.replicas }}
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels: {{- include "crewlane.selector" (dict "root" . "component" "worker") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "crewlane.selector" (dict "root" . "component" "worker") | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "crewlane.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext: {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: worker
+          image: {{ include "crewlane.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["node", "dist/worker.mjs"]
+          securityContext: {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - { name: metrics, containerPort: 8081 }
+          envFrom:
+            - configMapRef: { name: {{ include "crewlane.fullname" . }} }
+          env:
+            {{- include "crewlane.secretEnv" (dict "root" . "name" "WORKER_DATABASE_URL") | nindent 12 }}
+            {{- include "crewlane.secretEnv" (dict "root" . "name" "CREWLANE_ENCRYPTION_KEY") | nindent 12 }}
+            {{- include "crewlane.secretEnv" (dict "root" . "name" "BETTER_AUTH_SECRET") | nindent 12 }}
+          livenessProbe:
+            httpGet: { path: /healthz, port: metrics }
+            periodSeconds: 20
+            failureThreshold: 3
+          resources: {{- toYaml .Values.worker.resources | nindent 12 }}
+      {{- with .Values.worker.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.worker.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "crewlane.fullname" . }}-worker
+  labels: {{- include "crewlane.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  selector: {{- include "crewlane.selector" (dict "root" . "component" "worker") | nindent 4 }}
+  ports:
+    - { name: metrics, port: 8081, targetPort: metrics }
+{{- end }}

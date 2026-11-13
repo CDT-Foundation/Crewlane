@@ -1,0 +1,7 @@
+Crewlane {{ .Chart.AppVersion }} is deployed.
+
+  Root site:  {{ ternary "https" "http" .Values.ingress.tls.enabled }}://{{ .Values.rootDomain }}
+  Tenants:    {{ ternary "https" "http" .Values.ingress.tls.enabled }}://<slug>.{{ .Values.rootDomain }}
+
+DNS: point {{ .Values.rootDomain }} and *.{{ .Values.rootDomain }} at the ingress.
+TLS: the wildcard certificate needs a DNS-01 issuer (cert-manager).

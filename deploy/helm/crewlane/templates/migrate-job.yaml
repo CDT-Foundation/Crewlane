@@ -1,0 +1,40 @@
+{{- if .Values.migrations.enabled }}
+# Runs before every install/upgrade. If it fails, Helm aborts the release and
+# the running pods keep serving the previous version.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "crewlane.fullname" . }}-migrate-{{ .Release.Revision }}
+  labels: {{- include "crewlane.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migrate
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: {{ .Values.migrations.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.migrations.activeDeadlineSeconds }}
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels: {{- include "crewlane.selector" (dict "root" . "component" "migrate") | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext: {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: migrate
+          image: {{ include "crewlane.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["node", "dist/migrate.mjs"]
+          securityContext: {{- toYaml .Values.securityContext | nindent 12 }}
+          env:
+            {{- include "crewlane.secretEnv" (dict "root" . "name" "DATABASE_ADMIN_URL") | nindent 12 }}
+            {{- include "crewlane.secretEnv" (dict "root" . "name" "APP_DB_PASSWORD") | nindent 12 }}
+            {{- include "crewlane.secretEnv" (dict "root" . "name" "WORKER_DB_PASSWORD") | nindent 12 }}
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 256Mi }
+{{- end }}

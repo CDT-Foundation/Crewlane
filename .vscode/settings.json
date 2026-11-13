@@ -1,0 +1,8 @@
+{
+  "workbench.editorAssociations": {
+    "*.md": "vscode.markdown.preview.editor"
+  },
+  "[markdown]": {
+    "editor.wordWrap": "on"
+  }
+}
