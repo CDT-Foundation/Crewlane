@@ -42,6 +42,7 @@ services:
 
   web:
     profiles: [app]
+    build: .
     image: crewlane:dev
     environment:
       <<: *app-env
@@ -57,6 +58,7 @@ services:
 
   worker:
     profiles: [app]
+    build: .
     image: crewlane:dev
     command: ["node", "dist/worker.mjs"]
     environment:
@@ -68,7 +70,7 @@ services:
   # S3-compatible storage for invoices and documents (console on :9001).
   minio:
     profiles: [app]
-    image: minio/minio:latest
+    image: pgsty/minio:latest
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
       MINIO_ROOT_USER: crewlane
@@ -78,7 +80,7 @@ services:
 
   minio-setup:
     profiles: [app]
-    image: minio/mc:latest
+    image: pgsty/mc:latest
     depends_on: [minio]
     entrypoint: ["/bin/sh", "-c", "sleep 3 && mc alias set local http://minio:9000 crewlane crewlane-minio && mc mb -p local/crewlane"]
 
