@@ -1,18 +1,279 @@
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
-/* Each tenant's brand colour is injected as --brand on <body>. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Brand and typography settings */
 @theme inline {
   --color-brand: var(--brand, #1e3a5f);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Sinhala", "Noto Sans Tamil", sans-serif;
+  --font-sans: var(--font-sora, "Sora"), ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
 html {
   color-scheme: light;
 }
 
+html.dark {
+  color-scheme: dark;
+}
+
+/* Minimalist floating pill scrollbars (matches Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(100, 116, 139, 0.7);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Dark mode scrollbars */
+.dark ::-webkit-scrollbar-thumb,
+html.dark ::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.22);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover,
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.42);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+/* Firefox only scrollbar fallback */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+  }
+  html.dark * {
+    scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+  }
+}
+
 body {
-  background: #f8fafc;
+  font-family: var(--font-sora, "Sora"), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  background-color: #f8fafc;
   color: #0f172a;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.dark body,
+html.dark body {
+  background-color: #090d16;
+  color: #f1f5f9;
+}
+
+/* Glassmorphism primitives */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.06), 0 0 1px 1px rgba(255, 255, 255, 0.8) inset;
+}
+
+.dark .glass-panel,
+html.dark .glass-panel {
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.5), 0 0 1px 1px rgba(255, 255, 255, 0.05) inset;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.04);
+}
+
+.dark .glass-card,
+html.dark .glass-card {
+  background: rgba(18, 27, 47, 0.6);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.4);
+}
+
+/* Glass input fields */
+.glass-input {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(203, 213, 225, 0.8);
+  color: #0f172a;
+}
+
+.dark .glass-input,
+html.dark .glass-input {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+}
+
+/* Ambient glow background decorations */
+.ambient-glow-1 {
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.18) 0%, rgba(99, 102, 241, 0) 70%);
+}
+
+.ambient-glow-2 {
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.18) 0%, rgba(14, 165, 233, 0) 70%);
+}
+
+.dark .ambient-glow-1,
+html.dark .ambient-glow-1 {
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.22) 0%, rgba(99, 102, 241, 0) 70%);
+}
+
+.dark .ambient-glow-2,
+html.dark .ambient-glow-2 {
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.2) 0%, rgba(56, 189, 248, 0) 70%);
+}
+
+/* Tasteful micro-animations */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes float-reverse {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(6px);
+  }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.03);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes spin-reverse {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-100%) scaleX(0.2);
+  }
+  50% {
+    transform: translateX(0%) scaleX(0.7);
+  }
+  100% {
+    transform: translateX(100%) scaleX(0.2);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: float-reverse 7s ease-in-out infinite;
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 4s ease-in-out infinite;
+}
+
+.animate-spin-reverse {
+  animation: spin-reverse 2s linear infinite;
+}
+
+.animate-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.animate-shimmer::after {
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.25) 35%,
+    rgba(255, 255, 255, 0.5) 50%,
+    rgba(255, 255, 255, 0.25) 65%,
+    transparent 100%
+  );
+  animation: shimmer 1.8s infinite;
+  content: "";
+}
+
+.dark .animate-shimmer::after,
+html.dark .animate-shimmer::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.03) 35%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 65%,
+    transparent 100%
+  );
+}
+
+.animate-progress-indeterminate {
+  animation: progress-indeterminate 1.5s cubic-bezier(0.65, 0.815, 0.735, 0.395) infinite;
+  transform-origin: 0% 50%;
 }
 
 @media print {
@@ -21,5 +282,6 @@ body {
   }
   body {
     background: white;
+    color: black;
   }
 }

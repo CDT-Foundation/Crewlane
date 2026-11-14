@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { SubmitButton } from "@/components/action-form";
+import { ChevronDownIcon, ChevronUpIcon, PlusIcon, TrashIcon } from "@/components/icons";
 import { buttonClass, Input, Select } from "@/components/ui";
 import type { WorkflowCondition, WorkflowDefinition, WorkflowStep } from "@/db/schema";
 import type { ActionState } from "@/lib/actions";
@@ -47,10 +48,16 @@ export function WorkflowBuilder({
               <Select value={step.approverRole} onChange={(e) => update(i, { approverRole: e.target.value })} className="w-48" aria-label="Approver role">
                 {roles.map((r) => <option key={r.key} value={r.key}>{r.name}</option>)}
               </Select>
-              <div className="ml-auto flex gap-1">
-                <button type="button" className={buttonClass("ghost", "px-2")} disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move up">↑</button>
-                <button type="button" className={buttonClass("ghost", "px-2")} disabled={i === steps.length - 1} onClick={() => move(i, 1)} aria-label="Move down">↓</button>
-                <button type="button" className={buttonClass("ghost", "px-2 text-red-600")} onClick={() => setSteps((s) => s.filter((_, j) => j !== i))} aria-label="Remove step">✕</button>
+              <div className="ml-auto flex items-center gap-1">
+                <button type="button" className={buttonClass("ghost", "px-2")} disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move up">
+                  <ChevronUpIcon size={16} />
+                </button>
+                <button type="button" className={buttonClass("ghost", "px-2")} disabled={i === steps.length - 1} onClick={() => move(i, 1)} aria-label="Move down">
+                  <ChevronDownIcon size={16} />
+                </button>
+                <button type="button" className={buttonClass("ghost", "px-2 text-red-600 hover:text-red-700")} onClick={() => setSteps((s) => s.filter((_, j) => j !== i))} aria-label="Remove step">
+                  <TrashIcon size={16} />
+                </button>
               </div>
             </div>
             {fields.length ? (
@@ -79,11 +86,12 @@ export function WorkflowBuilder({
       </ol>
       <button
         type="button"
-        className={buttonClass("secondary")}
+        className={buttonClass("secondary", "flex items-center gap-1.5")}
         onClick={() => setSteps((s) => [...s, { name: `Step ${s.length + 1}`, approverRole: roles[0]?.key ?? "owner" }])}
         disabled={steps.length >= 6}
       >
-        + Add step
+        <PlusIcon size={16} />
+        <span>Add step</span>
       </button>
 
       <div className="space-y-2 border-t border-slate-100 pt-4 text-sm">

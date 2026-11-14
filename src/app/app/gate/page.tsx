@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { ActionForm } from "@/components/action-form";
+import { CheckCircleIcon } from "@/components/icons";
 import { Badge, Card, Input, PageHeader, buttonClass } from "@/components/ui";
 import { gatePasses } from "@/db/schema";
 import { findPassByToken } from "@/lib/gatepass";
@@ -41,12 +42,14 @@ export default async function GatePage({ searchParams }: { searchParams: Promise
         </div>
       ) : null}
       {pass && recent(pass.inAt) ? (
-        <div className="mb-4 rounded-xl border-2 border-emerald-300 bg-emerald-50 p-4 text-center text-lg font-semibold text-emerald-800">
-          ✓ Back on site at {formatDateTime(pass.inAt, tz).split(", ").pop()}
+        <div className="mb-4 flex items-center justify-center gap-2 rounded-xl border-2 border-emerald-300 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 p-4 text-center text-lg font-semibold text-emerald-800 dark:text-emerald-300">
+          <CheckCircleIcon size={22} className="text-emerald-600 dark:text-emerald-400" />
+          <span>Back on site at {formatDateTime(pass.inAt, tz).split(", ").pop()}</span>
         </div>
       ) : pass && recent(pass.outAt) ? (
-        <div className="mb-4 rounded-xl border-2 border-emerald-300 bg-emerald-50 p-4 text-center text-lg font-semibold text-emerald-800">
-          ✓ Left site at {formatDateTime(pass.outAt, tz).split(", ").pop()}
+        <div className="mb-4 flex items-center justify-center gap-2 rounded-xl border-2 border-emerald-300 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 p-4 text-center text-lg font-semibold text-emerald-800 dark:text-emerald-300">
+          <CheckCircleIcon size={22} className="text-emerald-600 dark:text-emerald-400" />
+          <span>Left site at {formatDateTime(pass.outAt, tz).split(", ").pop()}</span>
         </div>
       ) : null}
       {pass ? (

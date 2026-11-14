@@ -2,6 +2,7 @@
 
 import { type ReactNode, useActionState, useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
+import { SpinnerIcon } from "@/components/icons";
 import type { ActionState } from "@/lib/actions";
 import { toast } from "./toaster";
 import { type ButtonVariant, buttonClass } from "./ui";
@@ -20,8 +21,15 @@ type Props = {
 export function SubmitButton({ label, variant = "primary" }: { label: string; variant?: ButtonVariant }) {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" disabled={pending} className={buttonClass(variant)}>
-      {pending ? "Working…" : label}
+    <button type="submit" disabled={pending} className={buttonClass(variant, "inline-flex items-center gap-2")}>
+      {pending ? (
+        <>
+          <SpinnerIcon size={14} className="animate-spin shrink-0" />
+          <span>Processing…</span>
+        </>
+      ) : (
+        label
+      )}
     </button>
   );
 }

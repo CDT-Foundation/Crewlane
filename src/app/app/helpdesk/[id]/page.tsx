@@ -3,6 +3,7 @@ import { alias } from "drizzle-orm/pg-core";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
+import { StarIcon } from "@/components/icons";
 import { Badge, Card, Field, PageHeader, Select, Textarea } from "@/components/ui";
 import { assets, employees, ticketComments, tickets, user } from "@/db/schema";
 import { agentEmployeeIds } from "@/lib/helpdesk";
@@ -95,7 +96,11 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
             <Card title="How did we do?">
               <ActionForm action={rateAction.bind(null, t.id)} submitLabel="Rate and close">
                 <Select name="csat" defaultValue="5" className="w-48">
-                  {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{"★".repeat(n)}{"☆".repeat(5 - n)}</option>)}
+                  {[5, 4, 3, 2, 1].map((n) => (
+                    <option key={n} value={n}>
+                      {n} {n === 1 ? "Star" : "Stars"}
+                    </option>
+                  ))}
                 </Select>
                 <Textarea name="comment" rows={2} placeholder="Anything we could do better?" />
               </ActionForm>
@@ -109,7 +114,22 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
               {t.assetId ? <div><dt className="text-slate-500">Asset</dt><dd><Link className="text-brand hover:underline" href={`/app/assets/${t.assetId}`}>{data.assetTag}</Link> {data.assetName}</dd></div> : null}
               <div><dt className="text-slate-500">Response due</dt><dd>{t.responseDueAt ? formatDateTime(t.responseDueAt, tz) : "—"}{t.firstResponseAt ? <span className="text-slate-500"> · responded {formatDateTime(t.firstResponseAt, tz)}</span> : null}</dd></div>
               <div><dt className="text-slate-500">Resolve due</dt><dd>{t.resolveDueAt ? formatDateTime(t.resolveDueAt, tz) : "—"}</dd></div>
-              {t.csat ? <div><dt className="text-slate-500">Satisfaction</dt><dd>{"★".repeat(t.csat)}{"☆".repeat(5 - t.csat)} {t.csatComment ? `“${t.csatComment}”` : null}</dd></div> : null}
+              {t.csat ? (
+                <div>
+                  <dt className="text-slate-500">Satisfaction</dt>
+                  <dd className="mt-0.5 flex items-center gap-1">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <StarIcon
+                        key={i}
+                        size={15}
+                        filled={i < t.csat!}
+                        className={i < t.csat! ? "text-amber-400" : "text-slate-300 dark:text-slate-600"}
+                      />
+                    ))}
+                    {t.csatComment ? <span className="ml-2 text-slate-600 dark:text-slate-300">“{t.csatComment}”</span> : null}
+                  </dd>
+                </div>
+              ) : null}
             </dl>
           </Card>
           {agent ? (

@@ -7,7 +7,10 @@ const nextConfig: NextConfig = {
   // postgres.js and prom-client are plain Node libraries; keep them external.
   serverExternalPackages: ["postgres", "prom-client"],
   // Invoice and document uploads go through server actions (15 MB max).
-  experimental: { serverActions: { bodySizeLimit: "16mb" } },
+  experimental: {
+    serverActions: { bodySizeLimit: "16mb" },
+    cpus: 2,
+  },
   async headers() {
     return [
       {
