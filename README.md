@@ -204,26 +204,26 @@ flowchart LR
     end
 
     subgraph VectorDB["Tenant-Isolated Knowledge Base"]
-        PGV[("PostgreSQL + pgvector\n(Partitioned by tenant_id)")]
+        PGV["PostgreSQL + pgvector (Partitioned by tenant_id)"]
     end
 
     subgraph LocalGPU["In-House GPU Server / Ollama Cluster"]
-        OLLAMA["Ollama / vLLM Runtime\n(http://internal-gpu:11434)"]
-        LLM["Qwen-2.5-14B / Llama-3.1-8B\n+ Custom Workforce LoRA Adapters"]
-        REASON["DeepSeek-R1-Distill-14B\n(Payroll Audit & Tax Reasoning)"]
-        VLM["Qwen2.5-VL-7B / Llama-3.2-Vision\n(Receipt, NIC & Resume OCR)"]
-        EMB["nomic-embed-text / bge-m3\n(Local Vector Embeddings)"]
-        STT["Faster-Whisper + Piper TTS\n(Voice Tickets: EN / SI / TA)"]
+        OLLAMA["Ollama / vLLM Inference Runtime"]
+        LLM["Qwen-2.5-14B / Llama-3.1-8B + Workforce LoRA Adapters"]
+        REASON["DeepSeek-R1-Distill-14B (Payroll Audit & Tax Reasoning)"]
+        VLM["Qwen2.5-VL-7B / Llama-3.2-Vision (Receipt, NIC & CV OCR)"]
+        EMB["nomic-embed-text / bge-m3 (Local Vector Embeddings)"]
+        STT["Faster-Whisper + Piper TTS (Multilingual Voice Tickets)"]
     end
 
     subgraph Training["In-House Continuous Training Lab"]
-        DATA["Curated Anonymised Dataset\n(Tickets, Labour Laws, HR Templates)"]
+        DATA["Curated Anonymised Dataset (Tickets, Labour Laws, HR Templates)"]
         UNSLOTH["Unsloth / LLaMA-Factory QLoRA Trainer"]
         GGUF["GGUF Quantization & Ollama Modelfile"]
     end
 
     API --> SANITIZE
-    SANITIZE <-->|"Vector Search (WHERE tenant_id = X)"| PGV
+    SANITIZE <-->|"Tenant-Scoped Vector Search"| PGV
     SANITIZE <-->|"Local gRPC / HTTP"| OLLAMA
     OLLAMA --> LLM
     OLLAMA --> REASON
@@ -231,7 +231,9 @@ flowchart LR
     OLLAMA --> EMB
     OLLAMA --> STT
     EMB --> PGV
-    DATA --> UNSLOTH --> GGUF -->|"ollama create workforce-ai"| OLLAMA
+    DATA --> UNSLOTH
+    UNSLOTH --> GGUF
+    GGUF -->|"Publish Workforce Model"| OLLAMA
 ```
 
 ### Local Model Roster (Ollama)

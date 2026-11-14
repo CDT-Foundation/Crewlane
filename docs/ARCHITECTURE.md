@@ -13,29 +13,29 @@ Related documentation:
 Crewlane is architected as a modular monolith with an asynchronous transactional outbox worker, sharing a single container image across three runtime entrypoints (`web`, `worker`, and `migrate`).
 
 ```mermaid
-flowchart TB
+flowchart TD
     subgraph Clients["Clients & Edge Channels"]
-        Browser["Browser / Subdomain & Custom Domain<br/>(&lt;slug&gt;.localhost:3000)"]
-        GateScanner["Security Gate QR Scanner<br/>(/app/gate)"]
-        InboundChannels["External Ticket Webhooks<br/>(Email / Teams / Slack / WhatsApp)"]
-        DeviceAgent["Endpoint Discovery Agent<br/>(crewlane-agent.sh / .ps1)"]
+        Browser["Browser Workspace (Subdomain & Custom Domain)"]
+        GateScanner["Security Gate QR Scanner"]
+        InboundChannels["Signed Inbound Ticket Webhooks (Email, Teams, Slack, WhatsApp)"]
+        DeviceAgent["Endpoint Discovery Agent (Windows & Linux)"]
     end
 
     subgraph Runtime["Crewlane Runtime (Single Container Image)"]
-        Web["Next.js 16 App Router (server.js)<br/>Server Actions, SSR & REST APIs"]
-        Worker["Outbox Event Worker & Scheduler (dist/worker.mjs)<br/>FOR UPDATE SKIP LOCKED + Advisory Locks"]
-        Migrate["Migration & Tenant Upgrader Job (dist/migrate.mjs)<br/>Drizzle SQL + RLS + Trigger Provisioning"]
+        Web["Next.js App Router (SSR, Server Actions & REST APIs)"]
+        Worker["Outbox Event Worker & Advisory-Locked Scheduler"]
+        Migrate["Migration & Tenant Upgrader Job"]
     end
 
     subgraph DataLayer["Data & Storage Layer"]
-        PG[("PostgreSQL 16 + pgvector<br/>43 Forced-RLS Tables + Hash-Chained Audit Log")]
-        S3[("S3-Compatible Object Store (MinIO / R2 / S3)<br/>Tenant-Scoped Encrypted Objects")]
+        PG["PostgreSQL 16 + pgvector (43 Forced-RLS Tables & Hash-Chained Audit Log)"]
+        S3["S3-Compatible Object Storage (MinIO / R2 / S3)"]
     end
 
     subgraph Adapters["Per-Tenant Pluggable Adapters (Simulator or Live)"]
-        GWS["Google Workspace<br/>Admin SDK Directory API"]
-        M365["Microsoft 365 / Entra ID<br/>Microsoft Graph API"]
-        SMTP["SMTP Relay<br/>(Nodemailer)"]
+        GWS["Google Workspace Directory Adapter"]
+        M365["Microsoft 365 Graph Adapter"]
+        SMTP["SMTP Email Relay Adapter"]
     end
 
     Browser --> Web
@@ -43,13 +43,13 @@ flowchart TB
     InboundChannels -->|"HMAC-SHA256 Signed"| Web
     DeviceAgent -->|"Bearer Token"| Web
 
-    Web -->|"crewlane_app role<br/>SET LOCAL app.tenant_id"| PG
-    Web --> S3
-    Worker -->|"crewlane_worker role<br/>tenant_for_outbox_claim()"| PG
+    Web -->|"crewlane_app Role + Forced RLS"| PG
+    Web -->|"Tenant-Prefixed Keys"| S3
+    Worker -->|"crewlane_worker Role + Outbox Claim"| PG
     Worker --> GWS
     Worker --> M365
     Worker --> SMTP
-    Migrate -->|"postgres admin role"| PG
+    Migrate -->|"Admin Role DDL & RLS Provisioning"| PG
 ```
 
 ---
@@ -57,6 +57,29 @@ flowchart TB
 ## 2. Defense-in-Depth Multi-Tenancy & Database Security
 
 Unlike conventional SaaS applications that rely solely on application-level `WHERE tenant_id = ?` filters, Crewlane enforces tenant isolation, maker-checker governance, and audit immutability directly inside PostgreSQL (`drizzle/0001_security.sql` and `drizzle/0003_phase2_security.sql`).
+
+```mermaid
+flowchart LR
+    subgraph Request["1. Tenant Resolution & Context"]
+        Host["HTTP Host Header (Subdomain or Custom Domain)"]
+        Auth["Better-Auth Session & Membership Check"]
+        Tx["withTenant Transaction (SET LOCAL app.tenant_id)"]
+    end
+
+    subgraph Guardrails["2. PostgreSQL Kernel Enforcement"]
+        RLS["Forced Row-Level Security (tenant_id = app_current_tenant)"]
+        RefTrigger["Cross-Tenant FK Guard (assert_same_tenant_refs)"]
+        MCTrigger["Maker-Checker Trigger (approval_actions_guard)"]
+        AuditTrigger["SHA-256 Hash Chain Trigger (audit_log_chain)"]
+    end
+
+    Host --> Auth
+    Auth --> Tx
+    Tx --> RLS
+    RLS --> RefTrigger
+    RefTrigger --> MCTrigger
+    MCTrigger --> AuditTrigger
+```
 
 ### 2.1 Non-Owner Runtime Roles
  migrations run under the administrative connection (`DATABASE_ADMIN_URL`) and provision two least-privilege runtime roles that **own no tables** and have `NOBYPASSRLS`:
@@ -158,6 +181,33 @@ Permissions are defined in [`src/lib/permissions.ts`](../src/lib/permissions.ts)
 ## 5. Event-Driven Outbox Worker & Periodic Scheduler
 
 Cross-department automation is powered by [`src/worker/index.ts`](../src/worker/index.ts) and [`src/worker/scheduler.ts`](../src/worker/scheduler.ts).
+
+```mermaid
+flowchart LR
+    subgraph Onboarding["Zero-Touch Onboarding Flow (employee.hired)"]
+        Hire["HR Adds or Approves New Hire"]
+        Outbox1["Transactional Outbox (employee.hired)"]
+        Prov["Provision Google Workspace / M365 Account"]
+        Kit["Auto-Create Approved Role Equipment Request"]
+        Day1["Open Day-1 IT Setup Ticket"]
+    end
+
+    subgraph Offboarding["Offboarding Settlement Gate (employee.offboarding_started)"]
+        Exit["HR Initiates Resignation / Termination"]
+        Outbox2["Transactional Outbox (employee.offboarding_started)"]
+        Gate["Open Multi-Dept Clearance Gate (Assets, ID, Telecom)"]
+        Settle["Final Settlement Unblocked (or Loss Deducted)"]
+    end
+
+    Hire --> Outbox1
+    Outbox1 --> Prov
+    Outbox1 --> Kit
+    Outbox1 --> Day1
+
+    Exit --> Outbox2
+    Outbox2 --> Gate
+    Gate --> Settle
+```
 
 ### 5.1 Transactional Outbox Topics
 Domain mutations write events into `outbox_events` inside the same database transaction as the state change. The worker claims pending events using `FOR UPDATE SKIP LOCKED` with exponential backoff (`attempts * 5s`, max 10 attempts):
