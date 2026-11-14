@@ -2,6 +2,9 @@
 
 Crewlane is a multi-tenant HR, payroll and IT platform with private, in-house AI. It is organised as four pillars on one shared foundation and built in four phases over 28 weeks.
 
+- **Executive Project Brief & Quick Start:** [`README.md`](../README.md)
+- **Technical Architecture & Developer Reference:** [`docs/ARCHITECTURE.md`](./ARCHITECTURE.md)
+
 **Status legend:** ✅ Built (Phases 1–2) · 🔜 Planned (phase noted)
 
 ---

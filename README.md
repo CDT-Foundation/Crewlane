@@ -15,7 +15,14 @@
 | **Who It Is For** | Organisations from ~50 to 10,000+ employees: technology companies, manufacturers, banks, hospitals, conglomerates, and government bodies |
 | **Core Promise** | One unified system for the full Hire-to-Retire lifecycle, with zero external AI costs and 100% data privacy |
 | **How It Is Sold** | Multi-tenant cloud subscription (per employee per month) and an on-premise enterprise licence (*Ownmind Enterprise Appliance*) |
-| **Build Plan** | Four phases over 28 weeks |
+| **Build Plan** | Four phases over 28 weeks (Phases 1 & 2 implemented on this branch) |
+
+### Documentation Index
+
+- **[`README.md`](./README.md)** — Executive Project Brief, 4-Pillar Vision, Quick Start & Repository Workflow (unified from `main` / `dev` + branch implementation guide)
+- **[`docs/FEATURES.md`](./docs/FEATURES.md)** — Complete Product Feature Matrix & Implementation Status across Phases 1–4
+- **[`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)** — Technical Architecture & Developer Reference (50-table Drizzle/PostgreSQL schema, Forced RLS, Maker-Checker & SHA-256 Audit Chain triggers, 24 RBAC permissions, Outbox Worker & Scheduler, 37 App Router/API routes, Helm & CI/CD)
+- **[`SECURITY.md`](./SECURITY.md)** — Vulnerability Reporting & Security Policy
 
 ---
 
@@ -284,7 +291,9 @@ flowchart LR
 
 ## 10. Getting Started & Repository Workflow
 
-**Phase 1** (Foundation, Core HR and Governance) and **Phase 2** (Asset and IT Service Management) are implemented. Phases 3 and 4 appear in the app as "coming next" pages. See [`docs/FEATURES.md`](docs/FEATURES.md) for the full feature list and status.
+**Phase 1** (Foundation, Core HR and Governance) and **Phase 2** (Asset and IT Service Management) are implemented on this branch. Phases 3 and 4 appear in the app as "coming next" pages.
+- See **[`docs/FEATURES.md`](docs/FEATURES.md)** for the complete feature list and status across all four phases.
+- See **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** for the deep-dive engineering specification (database tables, RLS policies, SQL triggers, RBAC permission matrix, outbox topics, scheduler jobs, and route reference).
 
 - **Phase 1:** multi-tenant core with Postgres row-level security, onboarding wizard, subdomains, custom domains and branding, organisation builder, scoped roles, maker-checker approvals, no-code workflow builder, append-only hash-chained audit log, employee directory, letters and the pre-boarding portal.
 - **Phase 2:** asset register with QR labels, signed handovers and depreciation (straight-line and WDV) with a CSV report; equipment requests with line-manager approval; procurement (vendors, purchase orders with conditional approval, goods receipts that create assets); returnable and non-returnable gate passes with a security scan page; IT service desk (Kanban, SLA timers and breach alerts, internal notes, satisfaction ratings, inbound email/Teams/Slack/WhatsApp webhook); leave-aware routing of approvals and tickets; Google Workspace and Microsoft 365 provisioning; software licences with seat tracking, renewal reminders and an invoice vault; telecom bill splitter with payroll deductions; zero-touch onboarding and the offboarding gate that blocks final settlement until everything is returned; device discovery agent; in-app and email notifications.
