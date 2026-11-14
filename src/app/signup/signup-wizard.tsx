@@ -37,6 +37,8 @@ export function SignupWizard({ rootDomain }: { rootDomain: string }) {
   const [orgName, setOrgName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
+  const [legalEntityName, setLegalEntityName] = useState("");
+  const [legalEntityTouched, setLegalEntityTouched] = useState(false);
   const [country, setCountry] = useState(COUNTRIES[0]);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -48,7 +50,9 @@ export function SignupWizard({ rootDomain }: { rootDomain: string }) {
     const form = formRef.current;
     if (!form) return;
     // Validate only the fields on the visible step before moving on.
-    const fields = form.querySelectorAll<HTMLInputElement>(`[data-step="${step}"] :is(input,select)`);
+    const fields = form.querySelectorAll<HTMLInputElement | HTMLSelectElement>(
+      `[data-step="${step}"] input, [data-step="${step}"] select`,
+    );
     for (const f of fields) {
       if (!f.reportValidity()) return;
     }
@@ -56,7 +60,35 @@ export function SignupWizard({ rootDomain }: { rootDomain: string }) {
   }
 
   return (
-    <form ref={formRef} action={action} className="space-y-6">
+    <form
+      ref={formRef}
+      action={action}
+      noValidate
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && step < STEPS.length - 1) {
+          e.preventDefault();
+          next();
+        }
+      }}
+      onSubmit={(e) => {
+        const form = formRef.current;
+        if (!form) return;
+        for (let s = 0; s < STEPS.length; s++) {
+          const fields = form.querySelectorAll<HTMLInputElement | HTMLSelectElement>(
+            `[data-step="${s}"] input, [data-step="${s}"] select`,
+          );
+          for (const f of fields) {
+            if (!f.checkValidity()) {
+              e.preventDefault();
+              setStep(s);
+              setTimeout(() => f.reportValidity(), 0);
+              return;
+            }
+          }
+        }
+      }}
+      className="space-y-6"
+    >
       <ol className="flex gap-2 text-xs font-medium">
         {STEPS.map((label, i) => (
           <li
@@ -76,8 +108,10 @@ export function SignupWizard({ rootDomain }: { rootDomain: string }) {
             minLength={2}
             value={orgName}
             onChange={(e) => {
-              setOrgName(e.target.value);
-              if (!slugTouched) setSlug(toSlug(e.target.value));
+              const val = e.target.value;
+              setOrgName(val);
+              if (!slugTouched) setSlug(toSlug(val));
+              if (!legalEntityTouched) setLegalEntityName(val ? `${val} (Pvt) Ltd` : "");
             }}
           />
         </Field>
@@ -95,7 +129,17 @@ export function SignupWizard({ rootDomain }: { rootDomain: string }) {
           />
         </Field>
         <Field label="Legal entity name" hint="Shown on letters. You can add more entities and business units later.">
-          <Input name="legalEntityName" required minLength={2} defaultValue="" placeholder={orgName ? `${orgName} (Pvt) Ltd` : ""} />
+          <Input
+            name="legalEntityName"
+            required
+            minLength={2}
+            value={legalEntityName}
+            onChange={(e) => {
+              setLegalEntityTouched(true);
+              setLegalEntityName(e.target.value);
+            }}
+            placeholder={orgName ? `${orgName} (Pvt) Ltd` : ""}
+          />
         </Field>
         <Field label="Brand colour">
           <Input name="primaryColor" type="color" defaultValue="#1e3a5f" className="h-10 w-20 p-1" />

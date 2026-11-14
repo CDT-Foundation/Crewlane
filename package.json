@@ -13,8 +13,8 @@
     "test:unit": "vitest run tests/unit",
     "db:generate": "drizzle-kit generate",
     "db:check": "drizzle-kit check",
-    "db:migrate": "tsx src/db/migrate.ts",
-    "worker": "tsx src/worker/index.ts"
+    "db:migrate": "tsx --env-file=.env src/db/migrate.ts",
+    "worker": "tsx --env-file=.env src/worker/index.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1168.0",

@@ -6,7 +6,7 @@ export default defineConfig({
   dialect: "postgresql",
   dbCredentials: {
     // Migrations run as the schema owner, never as the runtime app role.
-    url: process.env.DATABASE_ADMIN_URL ?? "postgres://crewlane:crewlane@localhost:5432/crewlane",
+    url: process.env.DATABASE_ADMIN_URL ?? "postgres://crewlane:crewlane@localhost:5433/crewlane",
   },
   strict: true,
 });
