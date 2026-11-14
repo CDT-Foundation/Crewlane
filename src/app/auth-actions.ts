@@ -20,25 +20,37 @@ const INVALID = "Invalid email or password.";
 
 export async function signInAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const tenant = await currentTenant();
-  if (!tenant) return { error: "Unknown organisation." };
   const email = formString(fd, "email").toLowerCase();
   const password = formString(fd, "password");
   if (!email || !password) return { error: INVALID };
 
-  // Only members of this tenant may sign in on its host. Checked before the
-  // password so no session is ever created for a non-member.
   const ctx = await getAuth().$context;
   const found = await ctx.internalAdapter.findUserByEmail(email);
-  const member = found
-    ? await withTenant({ tenantId: tenant.id, userId: found.user.id }, async (tx) => {
-        const [m] = await tx
-          .select({ id: memberships.id })
-          .from(memberships)
-          .where(and(eq(memberships.userId, found.user.id), eq(memberships.active, true)))
-          .limit(1);
-        return m;
-      })
-    : undefined;
+  if (!found) {
+    metrics.signIns.inc({ result: "failed" });
+    return { error: INVALID };
+  }
+
+  // Verify membership: if on a specific tenant host, check that tenant; otherwise pick user's active tenant
+  const db = getDb();
+  const [member] = await db
+    .select({
+      id: memberships.id,
+      tenantId: memberships.tenantId,
+      slug: tenants.slug,
+    })
+    .from(memberships)
+    .innerJoin(tenants, eq(tenants.id, memberships.tenantId))
+    .where(
+      and(
+        eq(memberships.userId, found.user.id),
+        eq(memberships.active, true),
+        eq(tenants.status, "active"),
+        ...(tenant ? [eq(memberships.tenantId, tenant.id)] : []),
+      ),
+    )
+    .limit(1);
+
   if (!member) {
     metrics.signIns.inc({ result: "not_member" });
     return { error: INVALID };
@@ -48,7 +60,7 @@ export async function signInAction(_prev: ActionState, fd: FormData): Promise<Ac
     await getAuth().api.signInEmail({ body: { email, password }, headers: await headers() });
   } catch {
     metrics.signIns.inc({ result: "failed" });
-    log.info("sign-in failed", { tenant: tenant.slug });
+    log.info("sign-in failed", { tenant: tenant?.slug ?? member.slug });
     return { error: INVALID };
   }
   metrics.signIns.inc({ result: "ok" });

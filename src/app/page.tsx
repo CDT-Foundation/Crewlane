@@ -1,13 +1,12 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ActionForm } from "@/components/action-form";
 import { AmbientBackground } from "@/components/artwork";
 import { BoltIcon, CpuIcon, DoorIcon, LaptopIcon, UsersIcon } from "@/components/icons";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Input, LinkButton } from "@/components/ui";
+import { LinkButton } from "@/components/ui";
 import { env } from "@/lib/env";
+import { getAppContext } from "@/lib/session";
 import { currentTenant, hostKind } from "@/lib/tenancy";
-import { findOrganisationAction } from "./auth-actions";
 
 const PILLARS = [
   {
@@ -37,6 +36,9 @@ const PILLARS = [
 ];
 
 export default async function Home() {
+  const userCtx = await getAppContext();
+  if (userCtx) redirect("/app");
+
   const kind = await hostKind();
   if (kind.kind !== "root") {
     const tenant = await currentTenant();
@@ -69,9 +71,12 @@ export default async function Home() {
             <span className="text-base font-bold tracking-tight text-slate-900 dark:text-white">Crewlane</span>
           </Link>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <LinkButton href="/login" variant="ghost" className="text-xs font-semibold">
+              Sign in
+            </LinkButton>
             {env.publicSignup ? (
-              <LinkButton href="/signup" variant="primary" className="text-xs">
+              <LinkButton href="/signup" variant="primary" className="text-xs font-semibold">
                 Create Organisation
               </LinkButton>
             ) : null}
@@ -97,28 +102,15 @@ export default async function Home() {
         </p>
 
         {/* Action Controls */}
-        <div className="mt-10 flex flex-wrap items-center gap-5">
+        <div className="mt-10 flex flex-wrap items-center gap-4">
           {env.publicSignup ? (
-            <LinkButton href="/signup" className="text-sm font-semibold shadow-xl">
+            <LinkButton href="/signup" variant="primary" className="text-sm font-semibold shadow-xl">
               Create your organisation →
             </LinkButton>
           ) : null}
-
-          {/* Quick Find Org Glass Card */}
-          <div className="glass-card rounded-2xl p-3 border border-slate-200/80 dark:border-white/10 shadow-lg">
-            <ActionForm action={findOrganisationAction} submitLabel="Go to sign in" variant="secondary" inline>
-              <div className="flex items-center rounded-xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-900/80 px-3 py-1 text-sm backdrop-blur-md">
-                <Input
-                  name="slug"
-                  placeholder="your-company"
-                  className="border-0 bg-transparent shadow-none focus:ring-0 px-1 py-1 text-xs sm:text-sm text-slate-900 dark:text-white"
-                  required
-                  aria-label="Organisation address"
-                />
-                <span className="text-xs font-medium text-slate-400 dark:text-slate-500">.{env.rootDomain}</span>
-              </div>
-            </ActionForm>
-          </div>
+          <LinkButton href="/login" variant="secondary" className="text-sm font-semibold">
+            Sign in to workspace
+          </LinkButton>
         </div>
 
         {/* 4 Pillars Glass Grid */}

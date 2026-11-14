@@ -10,9 +10,8 @@ import { currentTenant } from "@/lib/tenancy";
 import { signInAction } from "../auth-actions";
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ welcome?: string }> }) {
-  const tenant = await currentTenant();
-  if (!tenant) redirect("/");
   if (await getAppContext()) redirect("/app");
+  const tenant = await currentTenant();
   const { welcome } = await searchParams;
 
   return (
@@ -40,17 +39,25 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         {/* Right: Glass Sign In Card */}
         <div className="glass-panel mx-auto w-full max-w-md rounded-3xl p-8 shadow-2xl transition-all sm:p-10">
           <div className="mb-6 flex items-center gap-3">
-            {tenant.branding.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={tenant.branding.logoUrl} alt="" className="h-10 w-auto" />
+            {tenant ? (
+              tenant.branding.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={tenant.branding.logoUrl} alt="" className="h-10 w-auto" />
+              ) : (
+                <div className="grid size-11 place-items-center rounded-2xl bg-brand text-xl font-bold text-white shadow-md shadow-brand/25">
+                  {tenant.name.charAt(0)}
+                </div>
+              )
             ) : (
-              <div className="grid size-11 place-items-center rounded-2xl bg-brand text-xl font-bold text-white shadow-md shadow-brand/25">
-                {tenant.name.charAt(0)}
+              <div className="flex size-11 items-center justify-center rounded-2xl bg-brand text-white shadow-md shadow-brand/25">
+                <BoltIcon size={22} />
               </div>
             )}
             <div>
               <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Sign in</h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400">to {tenant.name}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {tenant ? `to ${tenant.name}` : "Access your workspace"}
+              </p>
             </div>
           </div>
 

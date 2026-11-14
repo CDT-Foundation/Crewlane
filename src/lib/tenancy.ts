@@ -2,7 +2,8 @@ import { and, eq, isNotNull } from "drizzle-orm";
 import { headers } from "next/headers";
 import { cache } from "react";
 import { getDb } from "@/db/client";
-import { tenantDomains, tenants } from "@/db/schema";
+import { memberships, tenantDomains, tenants } from "@/db/schema";
+import { getAuth } from "./auth";
 import { env } from "./env";
 import { classifyHost, type HostKind, tenantOrigin } from "./hosts";
 
@@ -40,10 +41,32 @@ export async function findTenantForHost(kind: HostKind): Promise<Tenant | null> 
   return null;
 }
 
-/** The tenant for the current request host, or null on the root domain. */
+/** The tenant for the current request host, or resolved from user session on the root domain. */
 export const currentTenant = cache(async (): Promise<Tenant | null> => {
-  const t = await findTenantForHost(await hostKind());
-  return t && t.status === "active" ? t : null;
+  const host = await hostKind();
+  const t = await findTenantForHost(host);
+  if (t && t.status === "active") return t;
+
+  // On the root domain, resolve the tenant from the authenticated user's active membership
+  if (host.kind === "root") {
+    try {
+      const s = await getAuth().api.getSession({ headers: await headers() });
+      if (s?.user?.id) {
+        const db = getDb();
+        const [row] = await db
+          .select({ tenant: tenants })
+          .from(memberships)
+          .innerJoin(tenants, eq(tenants.id, memberships.tenantId))
+          .where(and(eq(memberships.userId, s.user.id), eq(memberships.active, true), eq(tenants.status, "active")))
+          .limit(1);
+        if (row?.tenant) return row.tenant;
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
 });
 
 export function tenantUrl(slug: string, path = "/"): string {
